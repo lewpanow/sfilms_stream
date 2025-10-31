@@ -583,9 +583,10 @@ cython_debug/
 qodana.yaml
 modules.xml
 sfilms_stream.iml
-copilot.data.migration.agen.xml
+copilot.data.migration.agent.xml
 copilot.data.migration.ask.xml
 copilot.data.migration.ask2agent.xml
 copilot.data.migration.edit.xml
-missions.xml
+misc.xml
 vcs.xml
+profiles_settings.xml
