@@ -1,0 +1,5 @@
+{
+    "pythonVersion": "3.10", // Change this to your Python version
+    "typeCheckingMode": "strict" // or "strict" depending on your needs, "basic" is a good starting point
+}
+  
