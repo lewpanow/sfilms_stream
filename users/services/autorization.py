@@ -8,6 +8,7 @@ import jwt
 from database.database import get_async_uow
 from users.repositories.user import AuthRepository
 
+SECRET_KEY = os.getenv("SECRET_KEY")
 
 def _hash_password(password: str, *, iterations: int = 100_000, hash_len: int = 32) -> str:
     import secrets
@@ -28,25 +29,16 @@ def _verify_password(password: str, stored_hash: str) -> bool:
     return hmac.compare_digest(actual, expected)
 
 
-async def _create_jwt(username: str) -> str:
-    auth_repo = AuthRepository
-    async with get_async_uow() as uow:
-        user_id = await auth_repo.get_user_id(uow.session, username=username)
-    if not user_id:
-        raise ValueError("User not found")
-    payload = {
-        'username': username,
-        'user_id': str(user_id),
-        'exp': datetime.now(timezone.utc) + timedelta(hours=1)
-    }
-    encoded_jwt = jwt.encode(payload, os.getenv("SECRET_KEY"), algorithm='HS256')
-    return encoded_jwt
-
-
 class Authenticate:
-    @staticmethod
-    async def authorization(username: str, password: str, repeat_password: str):
-        auth_repo = AuthRepository
+    def __init__(self, auth_repo: AuthRepository):
+        self.auth_repo = auth_repo
+
+    async def authorization(
+            self,
+            username: str,
+            password: str,
+            repeat_password: str,
+        ):
         if password != repeat_password:
             raise ValueError("Passwords do not match")
         async with get_async_uow() as uow:
@@ -58,8 +50,13 @@ class Authenticate:
         return await _create_jwt(username=username)
 
     @staticmethod
-    async def registration(username: str, email: str, password: str, repeat_password: str) -> str:
-        auth_repo = AuthRepository
+    async def registration(
+            self,
+            username: str,
+            email: str,
+            password: str,
+            repeat_password: str,
+) -> str | None:
         if password != repeat_password:
             raise ValueError("Passwords do not match")
         if len(password) < 8:
@@ -83,3 +80,15 @@ class Authenticate:
             return jwt_token
         else:
             raise ValueError("User creation failed")
+
+    async def _create_jwt(
+            self,
+            username: str,
+    ) -> str:
+        async with get_async_uow() as uow:
+            user_id = await self.auth_repo.get_user_id(uow.session, username=username)
+        if not user_id:
+            raise ValueError("User not found")
+        payload = {'username': username, 'user_id': user_id, 'exp': datetime.now(timezone.utc) + timedelta(hours=1)}
+        encoded_jwt = jwt.encode(payload, SECRET_KEY, algorithm='HS256')
+        return encoded_jwt

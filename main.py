@@ -3,6 +3,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.routers import router as auth_router
+from api.films import router as films_router
+
 
 app = FastAPI(title="Films App")
 
@@ -24,6 +26,7 @@ app.add_middleware(
 )
 
 app.include_router(auth_router)
+app.include_router(films_router)
 
 
 @app.get("/")
