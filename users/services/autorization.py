@@ -49,7 +49,6 @@ class Authenticate:
             raise ValueError("User or password was wrong")
         return await _create_jwt(username=username)
 
-    @staticmethod
     async def registration(
             self,
             username: str,

@@ -7,3 +7,4 @@ except EnvironmentError:
     pass
 
 sql_uri = os.getenv("DATABASE_URL")
+secret = os.getenv("SECRET_KEY")
