@@ -23,3 +23,16 @@ class UsersDTO(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+class UserRegistration(BaseModel):
+    username: str
+    email: str
+    password: str
+    repeat_password: str
+
+
+class UserAuthorization(BaseModel):
+    username: str
+    password: str
+    repeat_password: str
