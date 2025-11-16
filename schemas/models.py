@@ -1,5 +1,4 @@
 import os
-import uuid
 from datetime import datetime
 
 from sqlalchemy import String, UUID, text, Integer
@@ -11,7 +10,7 @@ Base = declarative_base()
 
 class Films(Base):
     __tablename__="films"
-    film_id: Mapped[uuid.UUID] = mapped_column(
+    film_id: Mapped[UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
     )
     name: Mapped[str]  = mapped_column(
@@ -27,7 +26,7 @@ class Films(Base):
 
 class Users(Base):
     __tablename__ = "users"
-    user_id: Mapped[uuid.UUID] = mapped_column(
+    user_id: Mapped[UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
     )
     username: Mapped[str] = mapped_column(
