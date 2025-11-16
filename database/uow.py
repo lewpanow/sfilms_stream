@@ -12,7 +12,7 @@ class AsyncUOW:
         self._tx: Optional[Transaction] = None
 
     async def __aenter__(self) -> AsyncUOW:
-        self._tx = await self.session.begin()
+        self._tx = await self.session.begin()  # pyright: ignore [reportAttributeAccessIssue]
         return self
 
     async def __aexit__(self, exc_type, exc, tb):
@@ -23,7 +23,7 @@ class AsyncUOW:
                 return False
         try:
             await self.session.flush()
-            await self._tx.commit()
+            await self._tx.commit()  # pyright: ignore [reportGeneralTypeIssues, reportOptionalMemberAccess)]
         except Exception:
             await self.session.rollback()
             raise
