@@ -15,6 +15,7 @@ def _hash_password(password: str, *, iterations: int = 100_000, hash_len: int = 
     dk = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt, iterations, dklen=hash_len)
     return f"{iterations}${salt.hex()}${dk.hex()}"
 
+
 def _verify_password(password: str, stored_hash: str) -> bool:
     try:
         iterations_s, salt_hex, dk_hex = stored_hash.split('$')
@@ -27,46 +28,58 @@ def _verify_password(password: str, stored_hash: str) -> bool:
     return hmac.compare_digest(actual, expected)
 
 
+async def _create_jwt(username: str) -> str:
+    auth_repo = AuthRepository
+    async with get_async_uow() as uow:
+        user_id = await auth_repo.get_user_id(uow.session, username=username)
+    if not user_id:
+        raise ValueError("User not found")
+    payload = {
+        'username': username,
+        'user_id': str(user_id),
+        'exp': datetime.now(timezone.utc) + timedelta(hours=1)
+    }
+    encoded_jwt = jwt.encode(payload, os.getenv("SECRET_KEY"), algorithm='HS256')
+    return encoded_jwt
+
+
 class Authenticate:
-    def __init__(self, auth_repo: AuthRepository):
-        self.auth_repo = auth_repo
-        self.SECRET_KEY = os.getenv("SECRET_KEY")
-
-    async def _create_jwt(self, username: str) -> str:
-        async with get_async_uow() as uow:
-            user_id = await self.auth_repo.get_user_id(uow.session, username=username)
-        if not user_id:
-            raise ValueError("User not found")
-        payload = {'username': username, 'user_id': user_id, 'exp': datetime.now(timezone.utc) + timedelta(hours=1)}
-        encoded_jwt = jwt.encode(payload, self.SECRET_KEY, algorithm='HS256')
-        return encoded_jwt
-
-    async def authorization(self, username: str, password: str, repeat_password: str):
+    @staticmethod
+    async def authorization(username: str, password: str, repeat_password: str):
+        auth_repo = AuthRepository
         if password != repeat_password:
             raise ValueError("Passwords do not match")
         async with get_async_uow() as uow:
-            stored_hash = await self.auth_repo.get_password_hash(uow.session, username=username)
+            stored_hash = await auth_repo.get_password_hash(uow.session, username=username)
         if stored_hash is None:
             raise ValueError("User or password was wrong")
         if not _verify_password(password, stored_hash):
             raise ValueError("User or password was wrong")
-        return await self._create_jwt(username=username)
+        return await _create_jwt(username=username)
 
-    async def registration(self, username: str, email: str, password: str, repeat_password: str) -> str | None:
+    @staticmethod
+    async def registration(username: str, email: str, password: str, repeat_password: str) -> str:
+        auth_repo = AuthRepository
         if password != repeat_password:
             raise ValueError("Passwords do not match")
+        if len(password) < 8:
+            raise ValueError("Password must be at least 8 characters long")
+        if not any(char in password for char in ["@", "#", "!"]):
+            raise ValueError("Password must contain at least one special character (@, #, !)")
+        if password.lower() == password:
+            raise ValueError("Password must contain at least one uppercase letter")
         async with get_async_uow() as uow:
-            username_check = await self.auth_repo.check_original_username(uow.session, username=username)
+            username_check = await auth_repo.check_original_username(uow.session, username=username)
         if username_check:
             raise ValueError("User already exists")
         password_hash = _hash_password(password)
         async with get_async_uow() as uow:
             try:
-                new_user = await self.auth_repo.create_user(uow.session, username, email, password_hash)
+                new_user = await auth_repo.create_user(uow.session, username, email, password_hash)
             except Exception:
                 raise ValueError("User creation failed")
         if new_user:
-            jwt_token: str = await self._create_jwt(username=username)
+            jwt_token: str = await _create_jwt(username=username)
             return jwt_token
         else:
             raise ValueError("User creation failed")

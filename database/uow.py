@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 from typing import Any, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.engine import Transaction
 from sqlalchemy.sql import Executable
+
 
 class AsyncUOW:
     def __init__(self, session: AsyncSession):
