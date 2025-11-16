@@ -33,7 +33,7 @@ class Auth:
                          " Пользователь не может быть создан")
             raise HTTPException(status_code=400, detail="failed to create")
         try:
-            token: str = await auth_service.registration(  # pyright: ignore [reportCallIssue]
+            token: str | None = await auth_service.registration(
                 username=str(user_data.username),
                 email=str(user_data.email),
                 password=str(user_data.password),
