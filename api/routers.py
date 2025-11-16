@@ -11,8 +11,15 @@ from dependencies import get_auth_service
 from schemas.DTO import UserRegistration, UserAuthorization
 from users.services.autorization import Authenticate
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except EnvironmentError:
+    pass
+
 router = APIRouter(prefix="/auth")
 app = router
+
 
 class Auth:
     @staticmethod
@@ -73,16 +80,21 @@ class Auth:
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid authorization header format. Must be 'Bearer <token>'",
+                detail="Invalid authentication scheme",
             )
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authorization header format. Must be 'Bearer <token>'",
+        )
 
-        try:
-            payload = jwt.decode(token, os.getenv("SECRET_KEY"), algorithms=['HS256'])
-            username = payload.get('username')
-            if not username:
-                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload")
+    try:
+        payload = jwt.decode(token, os.getenv("SECRET_KEY"), algorithms=['HS256'])
+        username = payload.get('username')
+        if not username:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload")
 
-            return {"message": f"Hello, {username}!"}
+        return {"message": f"Hello, {username}!"}
 
         except jwt.ExpiredSignatureError:
             raise HTTPException(

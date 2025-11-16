@@ -16,6 +16,7 @@ def _hash_password(password: str, *, iterations: int = 100_000, hash_len: int = 
     dk = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt, iterations, dklen=hash_len)
     return f"{iterations}${salt.hex()}${dk.hex()}"
 
+
 def _verify_password(password: str, stored_hash: str) -> bool:
     try:
         iterations_s, salt_hex, dk_hex = stored_hash.split('$')
@@ -41,12 +42,12 @@ class Authenticate:
         if password != repeat_password:
             raise ValueError("Passwords do not match")
         async with get_async_uow() as uow:
-            stored_hash = await self.auth_repo.get_password_hash(uow.session, username=username)
+            stored_hash = await auth_repo.get_password_hash(uow.session, username=username)
         if stored_hash is None:
             raise ValueError("User or password was wrong")
         if not _verify_password(password, stored_hash):
             raise ValueError("User or password was wrong")
-        return await self._create_jwt(username=username)
+        return await _create_jwt(username=username)
 
     async def registration(
             self,
@@ -55,17 +56,17 @@ class Authenticate:
             password: str,
 ) -> str | None:
         async with get_async_uow() as uow:
-            username_check = await self.auth_repo.check_original_username(uow.session, username=username)
+            username_check = await auth_repo.check_original_username(uow.session, username=username)
         if username_check:
             raise ValueError("User already exists")
         password_hash = _hash_password(password)
         async with get_async_uow() as uow:
             try:
-                new_user = await self.auth_repo.create_user(uow.session, username, email, password_hash)
+                new_user = await auth_repo.create_user(uow.session, username, email, password_hash)
             except Exception:
                 raise ValueError("User creation failed")
         if new_user:
-            jwt_token: str = await self._create_jwt(username=username)
+            jwt_token: str = await _create_jwt(username=username)
             return jwt_token
         else:
             raise ValueError("User creation failed")
