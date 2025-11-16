@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, Header, Depends
 from loguru import logger
 from starlette import status
 
+from config import secret
 from dependencies import get_auth_service
 from schemas.DTO import UserRegistration, UserAuthorization
 from users.services.autorization import Authenticate
@@ -20,13 +21,12 @@ class Auth:
         user_data: UserRegistration,
         auth_service: Authenticate = Depends(get_auth_service),
     ) -> Any:
-        secret = os.getenv("SECRET_KEY")
         if not secret:
             logger.error("SECRET_KEY не установлен или не получилось извлечь."
                          " Пользователь не может быть создан")
             raise HTTPException(status_code=400, detail="failed to create")
         try:
-            token: str = await auth_service.registration(
+            token: str = await auth_service.registration(  # pyright: ignore [reportCallIssue]
                 username=str(user_data.username),
                 email=str(user_data.email),
                 password=str(user_data.password),
