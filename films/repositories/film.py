@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from schemas.models import Films
 
+
 class FilmRepository:
     @staticmethod
     async def get_all_films(session: AsyncSession):
