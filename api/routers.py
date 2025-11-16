@@ -25,12 +25,13 @@ class Auth:
             logger.error("SECRET_KEY не установлен или не получилось извлечь."
                          " Пользователь не может быть создан")
             raise HTTPException(status_code=400, detail="failed to create")
+        if user_data.password != user_data.repeat_password:
+            raise ValueError("Passwords do not match")
         try:
             token: str | None = await auth_service.registration(
                 username=str(user_data.username),
                 email=str(user_data.email),
                 password=str(user_data.password),
-                repeat_password=str(user_data.repeat_password),
             )
             return {"access_token": token, "token_type": "bearer"}
         except ValueError as e:

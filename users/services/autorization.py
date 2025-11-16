@@ -53,10 +53,7 @@ class Authenticate:
             username: str,
             email: str,
             password: str,
-            repeat_password: str,
 ) -> str | None:
-        if password != repeat_password:
-            raise ValueError("Passwords do not match")
         async with get_async_uow() as uow:
             username_check = await self.auth_repo.check_original_username(uow.session, username=username)
         if username_check:
@@ -81,6 +78,10 @@ class Authenticate:
             user_id = await self.auth_repo.get_user_id(uow.session, username=username)
         if not user_id:
             raise ValueError("User not found")
-        payload = {'username': username, 'user_id': user_id, 'exp': datetime.now(timezone.utc) + timedelta(hours=1)}
+        payload = {
+            'username': username,
+            'user_id': str(user_id),
+            'exp': datetime.now(timezone.utc) + timedelta(hours=1)
+        }
         encoded_jwt = jwt.encode(payload, SECRET_KEY, algorithm='HS256')
         return encoded_jwt
