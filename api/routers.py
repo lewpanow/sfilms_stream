@@ -1,53 +1,62 @@
 import os
+from typing import Any
 
 import jwt
-from fastapi import APIRouter, HTTPException, Header
+from fastapi import APIRouter, HTTPException, Header, Depends
 from loguru import logger
 from starlette import status
-from starlette.responses import JSONResponse
 
+from dependencies import get_auth_service
+from schemas.DTO import UserRegistration, UserAuthorization
 from users.services.autorization import Authenticate
 
 router = APIRouter(prefix="/auth")
 app = router
 
 class Auth:
-    def  __init__(
-            self,
-            auth_service: Authenticate
-        ):
-        self.auth_service = auth_service
-    @app.get("/registration")
+    @staticmethod
+    @app.post("/registration")
     async def registration(
-            self,
-            username: str,
-            email: str,
-            password: str,
-            repeat_password: str
-    ) -> JSONResponse | dict[str, str | None]:
+        user_data: UserRegistration,
+        auth_service: Authenticate = Depends(get_auth_service),
+    ) -> Any:
+        secret = os.getenv("SECRET_KEY")
+        if not secret:
+            logger.error("SECRET_KEY не установлен или не получилось извлечь."
+                         " Пользователь не может быть создан")
+            raise HTTPException(status_code=400, detail="failed to create")
         try:
-            token = await self.auth_service.registration(username=username, email=email, password=password, repeat_password=repeat_password)
+            token: str = await auth_service.registration(
+                username=str(user_data.username),
+                email=str(user_data.email),
+                password=str(user_data.password),
+                repeat_password=str(user_data.repeat_password),
+            )
             return {"access_token": token, "token_type": "bearer"}
-        except Exception as e:
+        except ValueError as e:
             logger.error(f"проблема регистрации {e}")
-        return JSONResponse(content={"error": "Registration failed"}, status_code=400)
+            raise HTTPException(status_code=400, detail="failed to register")
 
-    @app.get("/authorization")
+    @staticmethod
+    @app.post("/authorization")
     async def authorization(
-            self,
-            username: str,
-            password: str,
-            repeat_password: str
-    ) -> JSONResponse | dict[str, str | None]:
+        user_data: UserAuthorization,
+        auth_service: Authenticate = Depends(get_auth_service),
+    ) -> Any:
         try:
-            token = await self.auth_service.authorization(username=username, password=password, repeat_password=repeat_password)
+            token = await auth_service.authorization(
+                username=user_data.username,
+                password=user_data.password,
+                repeat_password=user_data.repeat_password
+            )
             return {"access_token": token, "token_type": "bearer"}
         except Exception as e:
             logger.error(f"проблема авторизации {e}")
-        return JSONResponse(content="Authorization failed", status_code=403)
+            raise HTTPException(status_code=400, detail="failed to authorize")
 
+    @staticmethod
     @app.get('/protected')
-    async def protected_route(self, authorization: str | None = Header(default=None)):
+    async def protected_route(authorization: str | None = Header(default=None)):
         if not authorization:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
